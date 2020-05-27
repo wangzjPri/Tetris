@@ -4,7 +4,8 @@ import time
 import os
 import curses
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    filename='Tetris.log', filemode='w')
 logger = logging.getLogger(__name__)
 
 EMPTY_SQAURE = ' '
@@ -38,15 +39,69 @@ class Pieces:
         self._pos = None
         self.init_matrix()
         self._rotate_count = [0 for x in range(7)]  # rotate count for every type of shape
-        #print(f'init {self._pos}')
+        # print(f'init {self._pos}')
+        """
+        self.type1_rotates = [self.spawn_shapes((0, -1), (0, 1), (0, 2)),
+                              self.spawn_shapes((-1, 0), (1, 0), (2, 0))]
+
+        self.type2_rotates = [self.spawn_shapes((-1, 0), (1, 0), (1, 1)),
+                              self.spawn_shapes((0, -1), (0, 1), (-1, 1)),
+                              self.spawn_shapes((-1, -1), (-1, 0), (1, 0)),
+                              self.spawn_shapes((0, -1), (1, -1), (0, 1)),
+                              self.spawn_shapes((0, -1), (1, -1), (0, 1))
+                              ]
+        self.type3_rotates = [self.spawn_shapes((1, 0), (-1, 1), (0, 1)),
+                              self.spawn_shapes((-1, -1), (-1, 0), (0, 1))
+                              ]
+        self.type4_rotates = [self.spawn_shapes((-1, 0), (0, 1), (1, 1)),
+                              self.spawn_shapes((0, -1), (-1, 0), (-1, 1))]
+        self.type5_rotates = [self.spawn_shapes((0, -1), (-1, 0), (1, 0)),
+                              self.spawn_shapes((0, -1), (1, 0), (0, 1)),
+                              self.spawn_shapes((-1, 0), (1, 0), (0, 1)),
+                              self.spawn_shapes((0, -1), (-1, 0), (0, 1))
+                              ]
+        self.type6_rotates = [self.spawn_shapes((-1, 0), (1, 0), (-1, 1)),
+                              self.spawn_shapes((-1, -1), (0, -1), (0, 1)),
+                              self.spawn_shapes((1, -1), (-1, 0), (1, 0)),
+                              self.spawn_shapes((0, -1), (0, 1), (1, 1)),
+                              ]
+        """
+
+        self.type1_angle = [[(0, -1), (0, 1), (0, 2)],
+                            [(-1, 0), (1, 0), (2, 0)]]
+        self.type2_angle = [[(-1, 0), (1, 0), (1, 1)],
+                            [(0, -1), (0, 1), (-1, 1)],
+                            [(-1, -1), (-1, 0), (1, 0)],
+                            [(0, -1), (1, -1), (0, 1)],
+                            [(0, -1), (1, -1), (0, 1)]
+                            ]
+        self.type3_angle = [[(1, 0), (-1, 1), (0, 1)],
+                            [(-1, -1), (-1, 0), (0, 1)]
+                            ]
+        self.type4_angle = [[(-1, 0), (0, 1), (1, 1)],
+                              [(0, -1), (-1, 0), (-1, 1)]]
+        self.type5_angle = [[(0, -1), (-1, 0), (1, 0)],
+                              [(0, -1), (1, 0), (0, 1)],
+                              [(-1, 0), (1, 0), (0, 1)],
+                              [(0, -1), (-1, 0), (0, 1)]
+                              ]
+        self.type6_angle = [[(-1, 0), (1, 0), (-1, 1)],
+                              [(-1, -1), (0, -1), (0, 1)],
+                              [(1, -1), (-1, 0), (1, 0)],
+                              [(0, -1), (0, 1), (1, 1)],
+                              ]
+
+    def angle_to_points(self, angle):
+        res = []
+        for l in angle:
+            res.append(self.spawn_shapes(l[0], l[1], l[2]))
+        return res
 
     def spawn_shapes(self, b, c, d):
         x1, y1 = b
         x2, y2 = c
         x3, y3 = d
-        self._pos = [b, c, d]
 
-        #print(f'spawn_shaps {self._pos}')
         return [(self._x, self._y, self._color), (self._x + x1, self._y + y1, self._color),
                 (self._x + x2, self._y + y2, self._color), (self._x + x3, self._y + y3, self._color)
                 ]  # 2x2 matrix
@@ -54,6 +109,8 @@ class Pieces:
     def move(self):
         if self._pos is not None:
             self._to_draw = self.spawn_shapes(self._pos[0], self._pos[1], self._pos[2])
+        else:
+            self.init_matrix()
 
     def _rotate_index(self, direction, type, mod):
         if direction == 0:
@@ -71,40 +128,35 @@ class Pieces:
         if type is 0:
             return  # no change for square ^^
         elif type is 1:
-            self._type1_rotates = [self.spawn_shapes((0, -1), (0, 1), (0, 2)),
-                                   self.spawn_shapes((-1, 0), (1, 0), (2, 0))]
-            self._to_draw = self._type1_rotates[self._rotate_index(direction, type, 2)]
+            choice = self._rotate_index(direction, type, 2)
+            self.type1_rotates = self.angle_to_points(self.type1_angle)
+            self._to_draw = self.type1_rotates[choice]
+            self._pos = self.type1_angle[choice]
         elif type is 2:
-            self._type2_rotates = [self.spawn_shapes((-1, 0), (1, 0), (1, 1)),
-                                   self.spawn_shapes((0, -1), (0, 1), (-1, 1)),
-                                   self.spawn_shapes((-1, -1), (-1, 0), (1, 0)),
-                                   self.spawn_shapes((0, -1), (1, -1), (0, 1)),
-                                   self.spawn_shapes((0, -1), (1, -1), (0, 1))
-                                   ]
-            self._to_draw = self._type2_rotates[self._rotate_index(direction, type, 4)]
+            choice = self._rotate_index(direction, type, 4)
+            self.type2_rotates = self.angle_to_points(self.type2_angle)
+            self._to_draw = self.type2_rotates[choice]
+            self._pos = self.type2_angle[choice]
         elif type is 3:
-            self._type3_rotates = [self.spawn_shapes((1, 0), (-1, 1), (0, 1)),
-                                   self.spawn_shapes((-1, -1), (-1, 0), (0, 1))
-                                   ]
-            self._to_draw = self._type3_rotates[self._rotate_index(direction, type, 2)]
+            choice = self._rotate_index(direction, type, 2)
+            self.type3_rotates = self.angle_to_points(self.type3_angle)
+            self._to_draw = self.type3_rotates[choice]
+            self._pos = self.type3_angle[choice]
         elif type is 4:
-            self._type4_rotates = [self.spawn_shapes((-1, 0), (0, 1), (1, 1)),
-                                   self.spawn_shapes((0, -1), (-1, 0), (-1, 1))]
-            self._to_draw = self._type4_rotates[self._rotate_index(direction, type, 2)]
+            choice = self._rotate_index(direction, type, 2)
+            self.type4_rotates = self.angle_to_points(self.type4_angle)
+            self._to_draw = self.type4_rotates[choice]
+            self._pos = self.type4_angle[choice]
         elif type is 5:
-            self._type5_rotates = [self.spawn_shapes((0, -1), (-1, 0), (1, 0)),
-                                   self.spawn_shapes((0, -1), (1, 0), (0, 1)),
-                                   self.spawn_shapes((-1, 0), (1, 0), (0, 1)),
-                                   self.spawn_shapes((0, -1), (-1, 0), (0, 1))
-                                   ]
-            self._to_draw = self._type5_rotates[self._rotate_index(direction, type, 4)]
+            choice = self._rotate_index(direction, type, 4)
+            self.type5_rotates = self.angle_to_points(self.type5_angle)
+            self._to_draw = self.type5_rotates[choice]
+            self._pos = self.type5_angle[choice]
         elif type is 6:
-            self._type6_rotates = [self.spawn_shapes((-1, 0), (1, 0), (-1, 1)),
-                                   self.spawn_shapes((-1, -1), (0, -1), (0, 1)),
-                                   self.spawn_shapes((1, -1), (-1, 0), (1, 0)),
-                                   self.spawn_shapes((0, -1), (0, 1), (1, 1)),
-                                   ]
-            self._to_draw = self._type6_rotates[self._rotate_index(direction, type, 2)]
+            choice = self._rotate_index(direction, type, 2)
+            self.type6_rotates = self.angle_to_points(self.type6_angle)
+            self._to_draw = self.type6_rotates[choice]
+            self._pos = self.type5_angle[choice]
 
     def init_matrix(self):
         type = self._type
@@ -204,6 +256,8 @@ class Game:
         self._pieces.draw(self._broad)
 
     def step(self, action=None):
+
+        logger.info(f' step action: {action} ')
         self._pieces.next(self._broad, action)
         self.show_broad_curses()
         # self.set_block(1, 3, 'h')
