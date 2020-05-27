@@ -2,14 +2,15 @@ import logging
 import random
 import time
 import os
+import curses
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-EMPTY_SQAURE = '0'
+EMPTY_SQAURE = ' '
 TYPES = [x for x in range(6)]
 COLORS = ['r', 'g', 'b', 'o']
-COLORS = ['x']
+# COLORS = ['x']
 MOVE = ['L', 'R', 'U', 'D']  # 
 
 
@@ -41,8 +42,8 @@ class Pieces:
         x1, y1 = b
         x2, y2 = c
         x3, y3 = d
-        return [(self._x, self._y, self._color), (self._x + x1, self._y + y1, self._color)
-            , (self._x + x2, self._y + y2, self._color), (self._x + x3, self._y + y3, self._color)
+        return [(self._x, self._y, self._color), (self._x + x1, self._y + y1, self._color),
+                (self._x + x2, self._y + y2, self._color), (self._x + x3, self._y + y3, self._color)
                 ]  # 2x2 matrix
 
     def _rotate_index(self, direction, type, mod):
@@ -53,7 +54,7 @@ class Pieces:
         if self._rotate_count[type] < 0:
             self._rotate_count[type] = mod - 1
         if self._rotate_count[type] > mod - 1:
-            self._rotate_count[type] = 0;
+            self._rotate_count[type] = 0
         return self._rotate_count[type]
 
     def rotate(self, direction=0):  # 0 for right , 1 for left
@@ -115,11 +116,13 @@ class Pieces:
 
     def draw(self, broad):
         for x, y, c in self._to_draw:
+            if x < 0 or y < 0:
+                continue
             broad[y][x] = c
 
     def clear(self, broad):
         for x, y, c in self._to_draw:
-            broad[y][x] = '0'
+            broad[y][x] = EMPTY_SQAURE
 
     def next(self, broad, move=None):
         # print(self)
@@ -155,6 +158,17 @@ class Game:
         self.init_broad()
         self._pieces = None
         self._next_pieces = None
+        self._screen = None
+        self._win = None
+        self.init_curses()
+
+    def init_curses(self):
+        self._screen = curses.initscr()
+        curses.curs_set(0)
+        sh, sw = self._screen.getmaxyx()
+        self._win = curses.newwin(sh, sw, 0, 0)
+        self._win.keypad(1)
+        self._win.timeout(100)
 
     def set_block(self, x, y, ch):
         """
@@ -182,24 +196,47 @@ class Game:
 
     def step(self, action=None):
         self._pieces.next(self._broad, action)
-        self.show_broad()
+        self.show_broad_curses()
         # self.set_block(1, 3, 'h')
 
     def show_broad(self):
-        os.system('cls')
+        # os.system('cls')
         for r in self._broad:
             print(r)
         print('\n')
 
+    def show_broad_curses(self):
+        for j in range(self._height):
+            for i in range(self._width):
+                # print(f'{j},{i}')
+                if self._broad[j][i] == ' ':
+                    self._win.addch(j, i, ord(' '))
+                else:
+                    self._win.addch(j, i, curses.ACS_BLOCK)
+
     def run(self):
-        # while(True):
         self.gen_pieces()
-        self.step()
-        actionlist = ['D'] * 1 + ['U'] * 4  + ['D'] * 3
-        for action in actionlist:
-            time.sleep(0.5)
-            self.step(action)
-        pass
+        loop_count = 0
+        while True:
+            key = self._win.getch()
+            time.sleep(0.1)  # every loop takes 0.1 second
+            loop_count += 1
+            if loop_count % 5 == 0:
+                self.step('D')
+            if key == curses.KEY_UP:
+                self.step('U')
+            if key == curses.KEY_LEFT:
+                self.step('L')
+            if key == curses.KEY_RIGHT:
+                self.step('R')
+            if key == curses.KEY_DOWN:
+                self.step('D')
+            """
+            actionlist = ['D'] * 1 + ['U'] * 4 + ['D'] * 3
+            for action in actionlist:
+                time.sleep(0.5)
+                self.step(action)
+            """
 
 
 if __name__ == '__main__':
