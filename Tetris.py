@@ -23,7 +23,7 @@ class Pieces:
     """
 
     def __init__(self, type, color):
-        self.orange_ = """
+        """
         :param x:  x
         :param y:  y
         :param type:  0 ~6
@@ -35,16 +35,25 @@ class Pieces:
         self._type = type
         self._to_draw = []
         self._to_clear = []
+        self._pos = None
         self.init_matrix()
         self._rotate_count = [0 for x in range(7)]  # rotate count for every type of shape
+        #print(f'init {self._pos}')
 
     def spawn_shapes(self, b, c, d):
         x1, y1 = b
         x2, y2 = c
         x3, y3 = d
+        self._pos = [b, c, d]
+
+        #print(f'spawn_shaps {self._pos}')
         return [(self._x, self._y, self._color), (self._x + x1, self._y + y1, self._color),
                 (self._x + x2, self._y + y2, self._color), (self._x + x3, self._y + y3, self._color)
                 ]  # 2x2 matrix
+
+    def move(self):
+        if self._pos is not None:
+            self._to_draw = self.spawn_shapes(self._pos[0], self._pos[1], self._pos[2])
 
     def _rotate_index(self, direction, type, mod):
         if direction == 0:
@@ -131,13 +140,13 @@ class Pieces:
         self.clear(broad)
         if move is 'D':
             self._y += 1
-            self.init_matrix()
+            self.move()
         elif move is 'L':
             self._x -= 1
-            self.init_matrix()
+            self.move()
         elif move is 'R':
             self._x += 1
-            self.init_matrix()
+            self.move()
         elif move is 'U':
             self.rotate(direction=0)
 
