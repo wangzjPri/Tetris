@@ -165,7 +165,7 @@ class Pieces:
         for x, y, c in self._to_draw:
             if x >= 0 and y >= 0:
                 broad[y][x] = EMPTY_SQAURE
-                logger.info(f'cleared pixel at {y} * {x}')
+                #logger.info(f'cleared pixel at {y} * {x}')
 
     def next(self, broad, move=None):
         self._pre_to_draw = self._to_draw
@@ -183,8 +183,10 @@ class Pieces:
             self.move()
         elif move is 'U':
             self.rotate(direction=0)
-        hit = self.check_for_border(broad, last_x, last_y, move)
+        die = self.check_for_border(broad, last_x, last_y, move)
         self.draw(broad)
+        if die :
+            self._callback.pieces_dead()
 
     def check_for_border(self, broad, last_x, last_y, move):
         for x, y, c in self._to_draw:
@@ -192,19 +194,20 @@ class Pieces:
                 self._to_draw = self._pre_to_draw  # back to last
                 self._x = last_x
                 self._y = last_y
-                return True
+                return False
             if y > BROAD_HEIGHT - 1:
                 self._alive = False
                 self._to_draw = self._pre_to_draw  # back to last
-                self._callback.pieces_dead()
                 return True
             if broad[y][x] != EMPTY_SQAURE:
                 self._to_draw = self._pre_to_draw  # back to last
                 self._x = last_x
                 self._y = last_y
                 if move is 'D':
-                    self._callback.pieces_dead()
-                return True
+                    return True
+                else:
+                    return False
+        return False
 
     def set_dead_callback(self, callback):
         self._callback = callback
@@ -256,7 +259,7 @@ class Game:
         logger.info(self._broad)
 
     def pieces_dead(self):
-        logger.info(self)
+        logger.info(f'check for clear broad {self._broad} ')
         self._pieces = self._next_pieces
         self._pieces.set_dead_callback(self)
         self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
@@ -304,6 +307,7 @@ class Game:
         down_part = []
         cleared = 0
         new_broad = []
+
         for l in self._broad:
             if EMPTY_SQAURE not in l:
                 cleared += 1
@@ -312,19 +316,20 @@ class Game:
                 upper_part.append(l)
             else : 
                 down_part.append(l)
+        if cleared is 0:
+            return
         for i in range(cleared):
             logger.info(f'check empty_line {self._empty_line} ')
             new_broad.append(self._empty_line)
 
-        logger.info(f'check for clear {new_broad} ')
         if upper_part is not []:
             for lu in upper_part:
                 new_broad.append(lu)
         if down_part is not []:
-            for ld in upper_part:
+            for ld in down_part:
                 new_broad.append(ld)
-        if cleared is not 0:
-            self._broad = new_broad
+        self._broad = new_broad
+        logger.info(f'check for clear new broad {new_broad}  len : {len(new_broad)} len1: {cleared} len2: {len(upper_part)} len3: {len(down_part)}')
  
 
 
@@ -340,9 +345,9 @@ class Game:
         loop_count = 0
         while True:
             key = self._win.getch()
-            time.sleep(0.1)  # every loop takes 0.1 second
+            time.sleep(0.05)  # every loop takes 0.1 second
             loop_count += 1
-            if loop_count % 5 == 0:
+            if loop_count % 10 == 0:
                 self.step('D')
             if key == curses.KEY_UP:
                 self.step('U')
