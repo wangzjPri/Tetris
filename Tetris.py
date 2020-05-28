@@ -13,8 +13,8 @@ TYPES = [x for x in range(6)]
 COLORS = ['r', 'g', 'b', 'o']
 # COLORS = ['x']
 MOVE = ['L', 'R', 'U', 'D']  # 
-BROAD_HEIGHT = 30
-BROAD_WIDTH = 30
+BROAD_HEIGHT = 20
+BROAD_WIDTH = 15
 
 
 class Pieces:
@@ -24,8 +24,8 @@ class Pieces:
               ▉
               ▉
     """
-    global  BROAD_WIDTH
-    global  BROAD_HEIGHT
+    global BROAD_WIDTH
+    global BROAD_HEIGHT
 
     def __init__(self, type, color):
         """
@@ -34,7 +34,7 @@ class Pieces:
         :param type:  0 ~6
         :param color: 'r': red  ,'g': green  , 'b': blue , 'o': orange
         """
-        self._x = 4
+        self._x = int(BROAD_WIDTH/2)
         self._y = 0
         self._color = color
         self._type = type
@@ -59,17 +59,17 @@ class Pieces:
                             [(-1, -1), (-1, 0), (0, 1)]
                             ]
         self.type4_angle = [[(-1, 0), (0, 1), (1, 1)],
-                              [(0, -1), (-1, 0), (-1, 1)]]
+                            [(0, -1), (-1, 0), (-1, 1)]]
         self.type5_angle = [[(0, -1), (-1, 0), (1, 0)],
-                              [(0, -1), (1, 0), (0, 1)],
-                              [(-1, 0), (1, 0), (0, 1)],
-                              [(0, -1), (-1, 0), (0, 1)]
-                              ]
+                            [(0, -1), (1, 0), (0, 1)],
+                            [(-1, 0), (1, 0), (0, 1)],
+                            [(0, -1), (-1, 0), (0, 1)]
+                            ]
         self.type6_angle = [[(-1, 0), (1, 0), (-1, 1)],
-                              [(-1, -1), (0, -1), (0, 1)],
-                              [(1, -1), (-1, 0), (1, 0)],
-                              [(0, -1), (0, 1), (1, 1)],
-                              ]
+                            [(-1, -1), (0, -1), (0, 1)],
+                            [(1, -1), (-1, 0), (1, 0)],
+                            [(0, -1), (0, 1), (1, 1)],
+                            ]
 
     def angle_to_points(self, angle):
         res = []
@@ -109,33 +109,33 @@ class Pieces:
             return  # no change for square ^^
         elif type is 1:
             choice = self._rotate_index(direction, type, 2)
-            self.type1_rotates = self.angle_to_points(self.type1_angle)
-            self._to_draw = self.type1_rotates[choice]
+            type1_rotates = self.angle_to_points(self.type1_angle)
+            self._to_draw = type1_rotates[choice]
             self._pos = self.type1_angle[choice]
         elif type is 2:
             choice = self._rotate_index(direction, type, 4)
-            self.type2_rotates = self.angle_to_points(self.type2_angle)
-            self._to_draw = self.type2_rotates[choice]
+            type2_rotates = self.angle_to_points(self.type2_angle)
+            self._to_draw = type2_rotates[choice]
             self._pos = self.type2_angle[choice]
         elif type is 3:
             choice = self._rotate_index(direction, type, 2)
-            self.type3_rotates = self.angle_to_points(self.type3_angle)
-            self._to_draw = self.type3_rotates[choice]
+            type3_rotates = self.angle_to_points(self.type3_angle)
+            self._to_draw = type3_rotates[choice]
             self._pos = self.type3_angle[choice]
         elif type is 4:
             choice = self._rotate_index(direction, type, 2)
-            self.type4_rotates = self.angle_to_points(self.type4_angle)
-            self._to_draw = self.type4_rotates[choice]
+            type4_rotates = self.angle_to_points(self.type4_angle)
+            self._to_draw = type4_rotates[choice]
             self._pos = self.type4_angle[choice]
         elif type is 5:
             choice = self._rotate_index(direction, type, 4)
-            self.type5_rotates = self.angle_to_points(self.type5_angle)
-            self._to_draw = self.type5_rotates[choice]
+            type5_rotates = self.angle_to_points(self.type5_angle)
+            self._to_draw = type5_rotates[choice]
             self._pos = self.type5_angle[choice]
         elif type is 6:
             choice = self._rotate_index(direction, type, 4)
-            self.type6_rotates = self.angle_to_points(self.type6_angle)
-            self._to_draw = self.type6_rotates[choice]
+            type6_rotates = self.angle_to_points(self.type6_angle)
+            self._to_draw = type6_rotates[choice]
             self._pos = self.type5_angle[choice]
 
     def init_matrix(self):
@@ -163,7 +163,7 @@ class Pieces:
 
     def clear(self, broad):
         for x, y, c in self._to_draw:
-            if x>=0 and y>=0:
+            if x >= 0 and y >= 0:
                 broad[y][x] = EMPTY_SQAURE
                 logger.info(f'cleared pixel at {y} * {x}')
 
@@ -183,34 +183,32 @@ class Pieces:
             self.move()
         elif move is 'U':
             self.rotate(direction=0)
-        hit = self.check_for_border(broad,last_x,last_y,move)
+        hit = self.check_for_border(broad, last_x, last_y, move)
         self.draw(broad)
-    
-    def check_for_border(self,broad,last_x,last_y,move):
-        for x,y,c in self._to_draw:
-            if x<0 or x>BROAD_WIDTH-1:
-                self._exceed = True
-                self._to_draw = self._pre_to_draw # back to last
+
+    def check_for_border(self, broad, last_x, last_y, move):
+        for x, y, c in self._to_draw:
+            if x < 0 or x > BROAD_WIDTH - 1:
+                self._to_draw = self._pre_to_draw  # back to last
                 self._x = last_x
                 self._y = last_y
                 return True
-            if y > BROAD_HEIGHT-1 : 
+            if y > BROAD_HEIGHT - 1:
                 self._alive = False
-                self._to_draw = self._pre_to_draw # back to last
+                self._to_draw = self._pre_to_draw  # back to last
                 self._callback.pieces_dead()
                 return True
             if broad[y][x] != EMPTY_SQAURE:
-                self._to_draw = self._pre_to_draw # back to last
+                self._to_draw = self._pre_to_draw  # back to last
                 self._x = last_x
                 self._y = last_y
                 if move is 'D':
                     self._callback.pieces_dead()
                 return True
 
-
-    def set_dead_callback(self,callback):
+    def set_dead_callback(self, callback):
         self._callback = callback
-        #callback.pieces_dead()
+        # callback.pieces_dead()
 
 
 class Game:
@@ -222,6 +220,7 @@ class Game:
         self._width = w  # broad width
         self._height = h  # broad height
         self._broad = []  # matrix for game broad
+        self._empty_line=[]
         self.init_broad()
         self._pieces = None
         self._next_pieces = None
@@ -235,8 +234,8 @@ class Game:
         self._screen = curses.initscr()
         curses.start_color()
         curses.curs_set(0)
-        #sh, sw = self._screen.getmaxyx()
-        self._win = curses.newwin(self._height+self._dy+1,self._width+self._dx+1, self._dy-3, self._dx)
+        # sh, sw = self._screen.getmaxyx()
+        self._win = curses.newwin(self._height + self._dy + 1, self._width + self._dx + 1, self._dy - 3, self._dx)
         self._win.keypad(1)
         self._win.timeout(0)
         self._win.border()
@@ -251,6 +250,7 @@ class Game:
         self._broad[x][y] = ch
 
     def init_broad(self):
+        self._empty_line = [EMPTY_SQAURE for x in range(self._width)] 
         self._broad = [[EMPTY_SQAURE for x in range(self._width)] for y in range(self._height)]
         logger.info(f'init_broad for {self._width} * {self._height}')
         logger.info(self._broad)
@@ -260,6 +260,7 @@ class Game:
         self._pieces = self._next_pieces
         self._pieces.set_dead_callback(self)
         self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
+        self.check_for_clear()
 
     def gen_pieces(self):
         self._pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
@@ -291,17 +292,47 @@ class Game:
             for i in range(self._width):
                 # print(f'{j},{i}')
                 if self._broad[j][i] == ' ':
-                    self._win.addch(j+self._dy, i+self._dx-2, ord(' '))
+                    self._win.addch(j + self._dy, i + self._dx - 2, ord(' '))
                 else:
-                    #self._win.addch(j, i, curses.ACS_BLOCK)
-                    #self._win.attron(curses.color_pair(1))
-                    self._win.addch(j+self._dy, i+self._dx-2, ord('x'))
-                    #self._win.attroff(curses.color_pair(1))
+                    # self._win.addch(j, i, curses.ACS_BLOCK)
+                    # self._win.attron(curses.color_pair(1))
+                    self._win.addch(j + self._dy, i + self._dx - 2, ord('X'))
+                    # self._win.attroff(curses.color_pair(1))
+
+    def check_for_clear(self):
+        upper_part = []
+        down_part = []
+        cleared = 0
+        new_broad = []
+        for l in self._broad:
+            if EMPTY_SQAURE not in l:
+                cleared += 1
+                logger.info(f'check for clear {cleared} ')
+            elif cleared == 0:
+                upper_part.append(l)
+            else : 
+                down_part.append(l)
+        for i in range(cleared):
+            logger.info(f'check empty_line {self._empty_line} ')
+            new_broad.append(self._empty_line)
+
+        logger.info(f'check for clear {new_broad} ')
+        if upper_part is not []:
+            for lu in upper_part:
+                new_broad.append(lu)
+        if down_part is not []:
+            for ld in upper_part:
+                new_broad.append(ld)
+        if cleared is not 0:
+            self._broad = new_broad
+ 
+
+
 
     def close_curses(self):
-        curses.nocbreak() #关闭字符终端功能（只有回车时才发生终端）
+        curses.nocbreak()  # 关闭字符终端功能（只有回车时才发生终端）
         self._win.keypad(0)
-        curses.echo() #打开输入回显功能
+        curses.echo()  # 打开输入回显功能
         curses.endwin()
 
     def run(self):
@@ -325,6 +356,7 @@ class Game:
                 logger.info('q  pressed quit now')
                 self.close_curses()
                 return
+
 
 if __name__ == '__main__':
     game = Game(BROAD_WIDTH, BROAD_HEIGHT)
