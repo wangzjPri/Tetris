@@ -13,15 +13,19 @@ TYPES = [x for x in range(6)]
 COLORS = ['r', 'g', 'b', 'o']
 # COLORS = ['x']
 MOVE = ['L', 'R', 'U', 'D']  # 
+BROAD_HEIGHT = 30
+BROAD_WIDTH = 30
 
 
 class Pieces:
     """
     0: ▉▉  1: ▉ 2:  ▉▉▉  3:     ▉▉  4 :   ▉▉    5:      ▉     6:   ▉▉▉
-       ▉▉     ▉         ▉       ▉▉            ▉▉        ▉▉▉        ▉
-                ▉
-                ▉
+       ▉▉     ▉       ▉        ▉▉          ▉▉          ▉▉▉         ▉
+              ▉
+              ▉
     """
+    global  BROAD_WIDTH
+    global  BROAD_HEIGHT
 
     def __init__(self, type, color):
         """
@@ -34,38 +38,14 @@ class Pieces:
         self._y = 0
         self._color = color
         self._type = type
+        self._pre_to_draw = []
         self._to_draw = []
         self._to_clear = []
         self._pos = None
         self.init_matrix()
+        self._alive = True
+        self._callback = None
         self._rotate_count = [0 for x in range(7)]  # rotate count for every type of shape
-        # print(f'init {self._pos}')
-        """
-        self.type1_rotates = [self.spawn_shapes((0, -1), (0, 1), (0, 2)),
-                              self.spawn_shapes((-1, 0), (1, 0), (2, 0))]
-
-        self.type2_rotates = [self.spawn_shapes((-1, 0), (1, 0), (1, 1)),
-                              self.spawn_shapes((0, -1), (0, 1), (-1, 1)),
-                              self.spawn_shapes((-1, -1), (-1, 0), (1, 0)),
-                              self.spawn_shapes((0, -1), (1, -1), (0, 1)),
-                              self.spawn_shapes((0, -1), (1, -1), (0, 1))
-                              ]
-        self.type3_rotates = [self.spawn_shapes((1, 0), (-1, 1), (0, 1)),
-                              self.spawn_shapes((-1, -1), (-1, 0), (0, 1))
-                              ]
-        self.type4_rotates = [self.spawn_shapes((-1, 0), (0, 1), (1, 1)),
-                              self.spawn_shapes((0, -1), (-1, 0), (-1, 1))]
-        self.type5_rotates = [self.spawn_shapes((0, -1), (-1, 0), (1, 0)),
-                              self.spawn_shapes((0, -1), (1, 0), (0, 1)),
-                              self.spawn_shapes((-1, 0), (1, 0), (0, 1)),
-                              self.spawn_shapes((0, -1), (-1, 0), (0, 1))
-                              ]
-        self.type6_rotates = [self.spawn_shapes((-1, 0), (1, 0), (-1, 1)),
-                              self.spawn_shapes((-1, -1), (0, -1), (0, 1)),
-                              self.spawn_shapes((1, -1), (-1, 0), (1, 0)),
-                              self.spawn_shapes((0, -1), (0, 1), (1, 1)),
-                              ]
-        """
 
         self.type1_angle = [[(0, -1), (0, 1), (0, 2)],
                             [(-1, 0), (1, 0), (2, 0)]]
@@ -153,7 +133,7 @@ class Pieces:
             self._to_draw = self.type5_rotates[choice]
             self._pos = self.type5_angle[choice]
         elif type is 6:
-            choice = self._rotate_index(direction, type, 2)
+            choice = self._rotate_index(direction, type, 4)
             self.type6_rotates = self.angle_to_points(self.type6_angle)
             self._to_draw = self.type6_rotates[choice]
             self._pos = self.type5_angle[choice]
@@ -183,12 +163,14 @@ class Pieces:
 
     def clear(self, broad):
         for x, y, c in self._to_draw:
-            broad[y][x] = EMPTY_SQAURE
+            if x>=0 and y>=0:
+                broad[y][x] = EMPTY_SQAURE
+                logger.info(f'cleared pixel at {y} * {x}')
 
     def next(self, broad, move=None):
-        # print(self)
-        # print('before clear')
-        # (self._to_draw)
+        self._pre_to_draw = self._to_draw
+        last_x = self._x
+        last_y = self._y
         self.clear(broad)
         if move is 'D':
             self._y += 1
@@ -201,10 +183,34 @@ class Pieces:
             self.move()
         elif move is 'U':
             self.rotate(direction=0)
-
-        # print('before draw')
-        # print(self._to_draw)
+        hit = self.check_for_border(broad,last_x,last_y,move)
         self.draw(broad)
+    
+    def check_for_border(self,broad,last_x,last_y,move):
+        for x,y,c in self._to_draw:
+            if x<0 or x>BROAD_WIDTH-1:
+                self._exceed = True
+                self._to_draw = self._pre_to_draw # back to last
+                self._x = last_x
+                self._y = last_y
+                return True
+            if y > BROAD_HEIGHT-1 : 
+                self._alive = False
+                self._to_draw = self._pre_to_draw # back to last
+                self._callback.pieces_dead()
+                return True
+            if broad[y][x] != EMPTY_SQAURE:
+                self._to_draw = self._pre_to_draw # back to last
+                self._x = last_x
+                self._y = last_y
+                if move is 'D':
+                    self._callback.pieces_dead()
+                return True
+
+
+    def set_dead_callback(self,callback):
+        self._callback = callback
+        #callback.pieces_dead()
 
 
 class Game:
@@ -221,15 +227,20 @@ class Game:
         self._next_pieces = None
         self._screen = None
         self._win = None
+        self._dx = 5
+        self._dy = 5
         self.init_curses()
 
     def init_curses(self):
         self._screen = curses.initscr()
+        curses.start_color()
         curses.curs_set(0)
-        sh, sw = self._screen.getmaxyx()
-        self._win = curses.newwin(sh, sw, 0, 0)
+        #sh, sw = self._screen.getmaxyx()
+        self._win = curses.newwin(self._height+self._dy+1,self._width+self._dx+1, self._dy-3, self._dx)
         self._win.keypad(1)
-        self._win.timeout(100)
+        self._win.timeout(0)
+        self._win.border()
+        curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
 
     def set_block(self, x, y, ch):
         """
@@ -244,8 +255,15 @@ class Game:
         logger.info(f'init_broad for {self._width} * {self._height}')
         logger.info(self._broad)
 
+    def pieces_dead(self):
+        logger.info(self)
+        self._pieces = self._next_pieces
+        self._pieces.set_dead_callback(self)
+        self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
+
     def gen_pieces(self):
         self._pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
+        self._pieces.set_dead_callback(self)
         self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
         logger.info(f' current pieces gen: {self._pieces._type}  next : {self._next_pieces._type}  ')
 
@@ -273,9 +291,18 @@ class Game:
             for i in range(self._width):
                 # print(f'{j},{i}')
                 if self._broad[j][i] == ' ':
-                    self._win.addch(j, i, ord(' '))
+                    self._win.addch(j+self._dy, i+self._dx-2, ord(' '))
                 else:
-                    self._win.addch(j, i, curses.ACS_BLOCK)
+                    #self._win.addch(j, i, curses.ACS_BLOCK)
+                    #self._win.attron(curses.color_pair(1))
+                    self._win.addch(j+self._dy, i+self._dx-2, ord('x'))
+                    #self._win.attroff(curses.color_pair(1))
+
+    def close_curses(self):
+        curses.nocbreak() #关闭字符终端功能（只有回车时才发生终端）
+        self._win.keypad(0)
+        curses.echo() #打开输入回显功能
+        curses.endwin()
 
     def run(self):
         self.gen_pieces()
@@ -294,14 +321,11 @@ class Game:
                 self.step('R')
             if key == curses.KEY_DOWN:
                 self.step('D')
-            """
-            actionlist = ['D'] * 1 + ['U'] * 4 + ['D'] * 3
-            for action in actionlist:
-                time.sleep(0.5)
-                self.step(action)
-            """
-
+            if key == ord('q'):
+                logger.info('q  pressed quit now')
+                self.close_curses()
+                return
 
 if __name__ == '__main__':
-    game = Game(10, 20)
+    game = Game(BROAD_WIDTH, BROAD_HEIGHT)
     game.run()
