@@ -3,6 +3,7 @@ import random
 import time
 import os
 import curses
+import copy
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     filename='Tetris.log', filemode='w')
@@ -14,7 +15,7 @@ COLORS = ['r', 'g', 'b', 'o']
 # COLORS = ['x']
 MOVE = ['L', 'R', 'U', 'D']  # 
 BROAD_HEIGHT = 20
-BROAD_WIDTH = 15
+BROAD_WIDTH = 16
 
 
 class Pieces:
@@ -40,7 +41,6 @@ class Pieces:
         self._type = type
         self._pre_to_draw = []
         self._to_draw = []
-        self._to_clear = []
         self._pos = None
         self.init_matrix()
         self._alive = True
@@ -156,16 +156,18 @@ class Pieces:
             self._to_draw = self.spawn_shapes((-1, 0), (1, 0), (-1, 1))
 
     def draw(self, broad):
+        #logger.info(f'draw pieces :  {self._to_draw} before  broad: {broad}')
         for x, y, c in self._to_draw:
-            if x < 0 or y < 0:
-                continue
-            broad[y][x] = c
+            if x >= 0 and y >= 0:
+                broad[y][x] = c
+                #logger.info(f'draw pieces : x: {x} y:{y} ')
+                #logger.info(f'draw pieces :  {self._to_draw} after broad: {broad}')
+
 
     def clear(self, broad):
         for x, y, c in self._to_draw:
             if x >= 0 and y >= 0:
                 broad[y][x] = EMPTY_SQAURE
-                #logger.info(f'cleared pixel at {y} * {x}')
 
     def next(self, broad, move=None):
         self._pre_to_draw = self._to_draw
@@ -256,14 +258,12 @@ class Game:
         self._empty_line = [EMPTY_SQAURE for x in range(self._width)] 
         self._broad = [[EMPTY_SQAURE for x in range(self._width)] for y in range(self._height)]
         logger.info(f'init_broad for {self._width} * {self._height}')
-        logger.info(self._broad)
 
     def pieces_dead(self):
-        logger.info(f'check for clear broad {self._broad} ')
+        self.check_for_clear()
         self._pieces = self._next_pieces
         self._pieces.set_dead_callback(self)
         self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
-        self.check_for_clear()
 
     def gen_pieces(self):
         self._pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
@@ -271,18 +271,16 @@ class Game:
         self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
         logger.info(f' current pieces gen: {self._pieces._type}  next : {self._next_pieces._type}  ')
 
-    def draw_pieces(self):
+    def clear_pieces(self):
         if self._pieces is None:
             logger.info(f' current pieces is None return ')
             return
-        self._pieces.draw(self._broad)
+        self._pieces.clear(self._broad)
 
     def step(self, action=None):
-
         logger.info(f' step action: {action} ')
         self._pieces.next(self._broad, action)
         self.show_broad_curses()
-        # self.set_block(1, 3, 'h')
 
     def show_broad(self):
         # os.system('cls')
@@ -291,10 +289,12 @@ class Game:
         print('\n')
 
     def show_broad_curses(self):
+        for l in self._broad:
+            logger.info(f' show_broad_curses: {l} ')
         for j in range(self._height):
             for i in range(self._width):
                 # print(f'{j},{i}')
-                if self._broad[j][i] == ' ':
+                if self._broad[j][i] == EMPTY_SQAURE:
                     self._win.addch(j + self._dy, i + self._dx - 2, ord(' '))
                 else:
                     # self._win.addch(j, i, curses.ACS_BLOCK)
@@ -319,8 +319,7 @@ class Game:
         if cleared is 0:
             return
         for i in range(cleared):
-            logger.info(f'check empty_line {self._empty_line} ')
-            new_broad.append(self._empty_line)
+            new_broad.append(copy.deepcopy(self._empty_line))
 
         if upper_part is not []:
             for lu in upper_part:
@@ -329,7 +328,8 @@ class Game:
             for ld in down_part:
                 new_broad.append(ld)
         self._broad = new_broad
-        logger.info(f'check for clear new broad {new_broad}  len : {len(new_broad)} len1: {cleared} len2: {len(upper_part)} len3: {len(down_part)}')
+        self.clear_pieces()
+        logger.info(f'check for clear new broad   len : {len(new_broad)} len1: {cleared} len2: {len(upper_part)} len3: {len(down_part)}')
  
 
 
@@ -345,9 +345,9 @@ class Game:
         loop_count = 0
         while True:
             key = self._win.getch()
-            time.sleep(0.05)  # every loop takes 0.1 second
+            time.sleep(0.01)  # every loop takes 0.01 second
             loop_count += 1
-            if loop_count % 10 == 0:
+            if loop_count % 50 == 0:
                 self.step('D')
             if key == curses.KEY_UP:
                 self.step('U')
