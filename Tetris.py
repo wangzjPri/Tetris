@@ -28,15 +28,15 @@ class Pieces:
     global BROAD_WIDTH
     global BROAD_HEIGHT
 
-    def __init__(self, type, color):
+    def __init__(self, type, color,x=int(BROAD_WIDTH/2),y=0):
         """
         :param x:  x
         :param y:  y
         :param type:  0 ~6
         :param color: 'r': red  ,'g': green  , 'b': blue , 'o': orange
         """
-        self._x = int(BROAD_WIDTH/2)
-        self._y = 0
+        self._x = x
+        self._y = y
         self._color = color
         self._type = type
         self._pre_to_draw = []
@@ -160,13 +160,14 @@ class Pieces:
         for x, y, c in self._to_draw:
             if x >= 0 and y >= 0:
                 broad[y][x] = c
-                #logger.info(f'draw pieces : x: {x} y:{y} ')
                 #logger.info(f'draw pieces :  {self._to_draw} after broad: {broad}')
 
 
     def clear(self, broad):
         for x, y, c in self._to_draw:
             if x >= 0 and y >= 0:
+                #logger.info(f'clear pos : x: {x} y: {y}')
+                #logger.info(f'clear broad: {broad}')
                 broad[y][x] = EMPTY_SQAURE
 
     def next(self, broad, move=None):
@@ -200,6 +201,9 @@ class Pieces:
             if y > BROAD_HEIGHT - 1:
                 self._alive = False
                 self._to_draw = self._pre_to_draw  # back to last
+                self._x = last_x
+                self._y = last_y
+
                 return True
             if broad[y][x] != EMPTY_SQAURE:
                 self._to_draw = self._pre_to_draw  # back to last
@@ -216,21 +220,38 @@ class Pieces:
         # callback.pieces_dead()
 
 
+"""
+scoreing chart
+0-1 100 400 900 2000    1 per line
+2-3 200 800 1800    4000    2 per line
+4-5 300 1200    2700    6000    3 per line
+6-7 400 1600    3600    8000    4 per line
+8+  500 2000    4500    10000   5 per line
+"""
+
+SCOREING =[100,400,900,2000]
+
+
 class Game:
     global EMPTY_SQAURE
     global TYPES
     global COLORS
+    global SCOREING
 
     def __init__(self, w, h):
         self._width = w  # broad width
         self._height = h  # broad height
+        self._level = 0  # game level
+        self._score = 0  # game score
         self._broad = []  # matrix for game broad
+        self._broad2 = []  # matrix for next pieces display 4*4
         self._empty_line=[]
         self.init_broad()
         self._pieces = None
         self._next_pieces = None
         self._screen = None
         self._win = None
+        self._win2 = None
         self._dx = 5
         self._dy = 5
         self.init_curses()
@@ -238,13 +259,17 @@ class Game:
     def init_curses(self):
         self._screen = curses.initscr()
         curses.start_color()
+        curses.use_default_colors()
         curses.curs_set(0)
         # sh, sw = self._screen.getmaxyx()
         self._win = curses.newwin(self._height + self._dy + 1, self._width + self._dx + 1, self._dy - 3, self._dx)
+        self._win2 = curses.newwin(self._height + self._dy + 1, self._width + self._dx + 1, self._dy - 3, int(self._dx+self._width*1.5))
         self._win.keypad(1)
         self._win.timeout(0)
         self._win.border()
-        curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        self._win2.keypad(1)
+        self._win2.timeout(0)
+        self._win2.border()
 
     def set_block(self, x, y, ch):
         """
@@ -257,18 +282,20 @@ class Game:
     def init_broad(self):
         self._empty_line = [EMPTY_SQAURE for x in range(self._width)] 
         self._broad = [[EMPTY_SQAURE for x in range(self._width)] for y in range(self._height)]
+        self._broad2 = [[EMPTY_SQAURE for x in range(4)] for y in range(4)]
         logger.info(f'init_broad for {self._width} * {self._height}')
 
     def pieces_dead(self):
         self.check_for_clear()
+        self._next_pieces.clear(self._broad2)
         self._pieces = self._next_pieces
         self._pieces.set_dead_callback(self)
-        self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
+        self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS),x=1,y=1)
 
     def gen_pieces(self):
         self._pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
         self._pieces.set_dead_callback(self)
-        self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS))
+        self._next_pieces = Pieces(random.choice(TYPES), random.choice(COLORS),x=1,y=1)
         logger.info(f' current pieces gen: {self._pieces._type}  next : {self._next_pieces._type}  ')
 
     def clear_pieces(self):
@@ -280,7 +307,9 @@ class Game:
     def step(self, action=None):
         logger.info(f' step action: {action} ')
         self._pieces.next(self._broad, action)
+        self._win2.addstr(self._dy, self._dx, f'Score: {self._score}')
         self.show_broad_curses()
+        self.show_next_pieces()
 
     def show_broad(self):
         # os.system('cls')
@@ -293,22 +322,45 @@ class Game:
             logger.info(f' show_broad_curses: {l} ')
         for j in range(self._height):
             for i in range(self._width):
-                # print(f'{j},{i}')
                 if self._broad[j][i] == EMPTY_SQAURE:
                     self._win.addch(j + self._dy, i + self._dx - 2, ord(' '))
                 else:
-                    # self._win.addch(j, i, curses.ACS_BLOCK)
-                    # self._win.attron(curses.color_pair(1))
                     self._win.addch(j + self._dy, i + self._dx - 2, ord('X'))
-                    # self._win.attroff(curses.color_pair(1))
+
+    def show_next_pieces(self):
+        self._next_pieces.next(self._broad2)
+        self._win2.addstr(self._dy+2, self._dx , 'next block : ')
+        for j in range(4):
+            for i in range(4):
+                if self._broad2[j][i] == EMPTY_SQAURE:
+                    self._win2.addch(j + self._dy+4, i + self._dx , ord(' '))
+                else:
+                    self._win2.addch(j + self._dy+4, i + self._dx , ord('X'))
+
+
+        
+        
+
+    def end_game(self):
+        self._broad = [[EMPTY_SQAURE for x in range(self._width)] for y in range(self._height)]
+        self._win2.addstr(int(BROAD_HEIGHT/2), self._dx, 'Game Over ,\n Play again? Y/N')
+        self._win2.timeout(-1)
+        key = self._win2.getch()
+        if key == ord('n'):
+            close_curses()
+        else :
+            return
 
     def check_for_clear(self):
         upper_part = []
         down_part = []
         cleared = 0
         new_broad = []
+        for i, l in enumerate(self._broad):
+            if i == 0 and l != self._empty_line:
+                logger.info('broad is full end game')
+                return self.end_game();
 
-        for l in self._broad:
             if EMPTY_SQAURE not in l:
                 cleared += 1
                 logger.info(f'check for clear {cleared} ')
@@ -320,7 +372,6 @@ class Game:
             return
         for i in range(cleared):
             new_broad.append(copy.deepcopy(self._empty_line))
-
         if upper_part is not []:
             for lu in upper_part:
                 new_broad.append(lu)
@@ -329,10 +380,8 @@ class Game:
                 new_broad.append(ld)
         self._broad = new_broad
         self.clear_pieces()
+        self._score += SCOREING[cleared-1]
         logger.info(f'check for clear new broad   len : {len(new_broad)} len1: {cleared} len2: {len(upper_part)} len3: {len(down_part)}')
- 
-
-
 
     def close_curses(self):
         curses.nocbreak()  # 关闭字符终端功能（只有回车时才发生终端）
@@ -345,7 +394,9 @@ class Game:
         loop_count = 0
         while True:
             key = self._win.getch()
+            self._win2.refresh()
             time.sleep(0.01)  # every loop takes 0.01 second
+
             loop_count += 1
             if loop_count % 50 == 0:
                 self.step('D')
