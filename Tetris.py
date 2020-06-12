@@ -42,10 +42,12 @@ class Pieces:
         self._pre_to_draw = []
         self._to_draw = []
         self._pos = None
+        self._pre_pos = None
         self.init_matrix()
         self._alive = True
         self._callback = None
         self._rotate_count = [0 for x in range(7)]  # rotate count for every type of shape
+        self._pre_rotate_count = []  # prev  rotate count 
 
         self.type1_angle = [[(0, -1), (0, 1), (0, 2)],
                             [(-1, 0), (1, 0), (2, 0)]]
@@ -172,6 +174,9 @@ class Pieces:
 
     def next(self, broad, move=None):
         self._pre_to_draw = self._to_draw
+        self._pre_rotate_count = self._rotate_count
+        self._pre_pos = self._pos
+        logger.info(f'next: {self._to_draw} ')
         last_x = self._x
         last_y = self._y
         self.clear(broad)
@@ -194,7 +199,10 @@ class Pieces:
     def check_for_border(self, broad, last_x, last_y, move):
         for x, y, c in self._to_draw:
             if x < 0 or x > BROAD_WIDTH - 1:
+                logger.info(f'check for border  exceed x to_draw: {self._to_draw} pre: {self._pre_to_draw} ')
                 self._to_draw = self._pre_to_draw  # back to last
+                self._rotate_count = self._pre_rotate_count
+                self._pos = self._pre_pos
                 self._x = last_x
                 self._y = last_y
                 return False
@@ -207,6 +215,8 @@ class Pieces:
                 return True
             if broad[y][x] != EMPTY_SQAURE:
                 self._to_draw = self._pre_to_draw  # back to last
+                self._rotate_count = self._pre_rotate_count
+                self._pos = self._pre_pos
                 self._x = last_x
                 self._y = last_y
                 if move is 'D':
@@ -255,6 +265,7 @@ class Game:
         self._dx = 5
         self._dy = 5
         self.init_curses()
+        self.pause = False
 
     def init_curses(self):
         self._screen = curses.initscr()
@@ -345,11 +356,13 @@ class Game:
         self._broad = [[EMPTY_SQAURE for x in range(self._width)] for y in range(self._height)]
         self._win2.addstr(int(BROAD_HEIGHT/2), self._dx, 'Game Over ,\n Play again? Y/N')
         self._win2.timeout(-1)
+        self.pause = True
         key = self._win2.getch()
         if key == ord('n'):
             close_curses()
-        else :
-            return
+        elif key == ord('y') :
+            self.pause = False    
+        return
 
     def check_for_clear(self):
         upper_part = []
@@ -393,9 +406,11 @@ class Game:
         self.gen_pieces()
         loop_count = 0
         while True:
+            time.sleep(0.01)  # every loop takes 0.01 second
+            if self.pause : 
+                continue
             key = self._win.getch()
             self._win2.refresh()
-            time.sleep(0.01)  # every loop takes 0.01 second
 
             loop_count += 1
             if loop_count % 50 == 0:
