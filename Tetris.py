@@ -107,34 +107,34 @@ class Pieces:
 
     def rotate(self, direction=0):  # 0 for right , 1 for left
         type = self._type
-        if type is 0:
+        if type == 0:
             return  # no change for square ^^
-        elif type is 1:
+        elif type == 1:
             choice = self._rotate_index(direction, type, 2)
             type1_rotates = self.angle_to_points(self.type1_angle)
             self._to_draw = type1_rotates[choice]
             self._pos = self.type1_angle[choice]
-        elif type is 2:
+        elif type == 2:
             choice = self._rotate_index(direction, type, 4)
             type2_rotates = self.angle_to_points(self.type2_angle)
             self._to_draw = type2_rotates[choice]
             self._pos = self.type2_angle[choice]
-        elif type is 3:
+        elif type == 3:
             choice = self._rotate_index(direction, type, 2)
             type3_rotates = self.angle_to_points(self.type3_angle)
             self._to_draw = type3_rotates[choice]
             self._pos = self.type3_angle[choice]
-        elif type is 4:
+        elif type == 4:
             choice = self._rotate_index(direction, type, 2)
             type4_rotates = self.angle_to_points(self.type4_angle)
             self._to_draw = type4_rotates[choice]
             self._pos = self.type4_angle[choice]
-        elif type is 5:
+        elif type == 5:
             choice = self._rotate_index(direction, type, 4)
             type5_rotates = self.angle_to_points(self.type5_angle)
             self._to_draw = type5_rotates[choice]
             self._pos = self.type5_angle[choice]
-        elif type is 6:
+        elif type == 6:
             choice = self._rotate_index(direction, type, 4)
             type6_rotates = self.angle_to_points(self.type6_angle)
             self._to_draw = type6_rotates[choice]
@@ -142,19 +142,19 @@ class Pieces:
 
     def init_matrix(self):
         type = self._type
-        if type is 0:
+        if type == 0:
             self._to_draw = self.spawn_shapes((1, 0), (0, 1), (1, 1))
-        elif type is 1:
+        elif type == 1:
             self._to_draw = self.spawn_shapes((0, -1), (0, 1), (0, 2))
-        elif type is 2:
+        elif type == 2:
             self._to_draw = self.spawn_shapes((-1, 0), (1, 0), (1, 1))
-        elif type is 3:
+        elif type == 3:
             self._to_draw = self.spawn_shapes((1, 0), (-1, 1), (0, 1))
-        elif type is 4:
+        elif type == 4:
             self._to_draw = self.spawn_shapes((-1, 0), (0, 1), (1, 1))
-        elif type is 5:
+        elif type == 5:
             self._to_draw = self.spawn_shapes((0, -1), (-1, 0), (1, 0))
-        elif type is 6:
+        elif type == 6:
             self._to_draw = self.spawn_shapes((-1, 0), (1, 0), (-1, 1))
 
     def draw(self, broad):
@@ -180,16 +180,16 @@ class Pieces:
         last_x = self._x
         last_y = self._y
         self.clear(broad)
-        if move is 'D':
+        if move == 'D':
             self._y += 1
             self.move()
-        elif move is 'L':
+        elif move == 'L':
             self._x -= 1
             self.move()
-        elif move is 'R':
+        elif move == 'R':
             self._x += 1
             self.move()
-        elif move is 'U':
+        elif move == 'U':
             self.rotate(direction=0)
         die = self.check_for_border(broad, last_x, last_y, move)
         self.draw(broad)
@@ -219,7 +219,7 @@ class Pieces:
                 self._pos = self._pre_pos
                 self._x = last_x
                 self._y = last_y
-                if move is 'D':
+                if move == 'D':
                     return True
                 else:
                     return False
@@ -381,7 +381,7 @@ class Game:
                 upper_part.append(l)
             else : 
                 down_part.append(l)
-        if cleared is 0:
+        if cleared == 0:
             return
         for i in range(cleared):
             new_broad.append(copy.deepcopy(self._empty_line))
